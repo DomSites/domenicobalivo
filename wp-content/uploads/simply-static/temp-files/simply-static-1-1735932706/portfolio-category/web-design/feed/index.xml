@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>Web Design &#8211; My Own Design Portfolio | Domenico Balivo</title>
+	<atom:link href="https://domsites.github.io/domenicobalivo/portfolio-category/web-design/feed/" rel="self" type="application/rss+xml" />
+	<link>https://domsites.github.io/domenicobalivo</link>
+	<description></description>
+	<lastBuildDate>Mon, 24 Dec 2018 18:20:44 +0000</lastBuildDate>
+	<language>en-US</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	<generator>https://wordpress.org/?v=6.7.1</generator>
+	<item>
+		<title>italianpot</title>
+		<link>https://domsites.github.io/domenicobalivo/portfolio/italianpot/</link>
+		
+		<dc:creator><![CDATA[admin]]></dc:creator>
+		<pubDate>Sat, 16 Dec 2017 17:02:14 +0000</pubDate>
+				<guid isPermaLink="false">http://www.domenicobalivo.com/?post_type=portfolio&#038;p=1140</guid>
+
+					<description><![CDATA[]]></description>
+										<content:encoded><![CDATA[<div style="max-width:1042px;" class="nm-row nm-row-boxed nm-row-max-width vc_row wpb_row  vc_custom_1454612177012"><div class="nm_column wpb_column vc_column_container col-sm-12 vc_col-sm-12"><div class="vc_column-inner"><div class="wpb_wrapper">
+	<div class="wpb_text_column wpb_content_element " >
+		<div class="wpb_wrapper">
+			<h3>Italianpot</h3>
+
+		</div>
+	</div>
+</div></div></div></div><div class="nm-row nm-row-boxed vc_row wpb_row  vc_custom_1454612356742"><div class="nm_column wpb_column vc_column_container col-sm-12 vc_col-sm-12"><div class="vc_column-inner"><div class="wpb_wrapper">
+	<div  class="wpb_single_image wpb_content_element vc_align_left">
+		
+		<figure class="wpb_wrapper vc_figure">
+			<a href="https://italianpot.com/" target="_self" class="vc_single_image-wrapper   vc_box_border_grey"><img fetchpriority="high" decoding="async" width="1200" height="600" src="https://domsites.github.io/domenicobalivo/wp-content/uploads/2017/12/Italianpot-Logo.jpg" class="vc_single_image-img attachment-full" alt="italianpot" srcset="https://domsites.github.io/domenicobalivo/wp-content/uploads/2017/12/Italianpot-Logo.jpg 1200w, https://domsites.github.io/domenicobalivo/wp-content/uploads/2017/12/Italianpot-Logo-768x384.jpg 768w" sizes="(max-width: 1200px) 100vw, 1200px" /></a>
+		</figure>
+	</div>
+</div></div></div></div><div class="nm-row nm-row-full vc_row wpb_row "><div class="nm_column wpb_column vc_column_container col-sm-12 vc_col-sm-12"><div class="vc_column-inner"><div class="wpb_wrapper"><div class="vc_empty_space"   style="height: 32px" ><span class="vc_empty_space_inner"></span></div>
+</div></div></div></div><div class="nm-row nm-row-boxed vc_row wpb_row  vc_custom_1454612356742"><div class="nm_column wpb_column vc_column_container col-sm-12 vc_col-sm-12"><div class="vc_column-inner"><div class="wpb_wrapper">
+	<div  class="wpb_single_image wpb_content_element vc_align_left">
+		
+		<figure class="wpb_wrapper vc_figure">
+			<a href="https://italianpot.com/" target="_self" class="vc_single_image-wrapper   vc_box_border_grey"><img decoding="async" width="1200" height="600" src="https://domsites.github.io/domenicobalivo/wp-content/uploads/2017/12/italianpot-site.jpg" class="vc_single_image-img attachment-full" alt="italianpot" srcset="https://domsites.github.io/domenicobalivo/wp-content/uploads/2017/12/italianpot-site.jpg 1200w, https://domsites.github.io/domenicobalivo/wp-content/uploads/2017/12/italianpot-site-768x384.jpg 768w" sizes="(max-width: 1200px) 100vw, 1200px" /></a>
+		</figure>
+	</div>
+</div></div></div></div>
+]]></content:encoded>
+					
+		
+		
+			</item>
+	</channel>
+</rss>
