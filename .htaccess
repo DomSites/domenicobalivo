@@ -17,6 +17,14 @@ RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /domenicobalivo/index.php [L]
 </IfModule>
 
+
+# Allow access from all domains for webfonts.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(ttf|ttc|otf|eot|woff|font.css|css)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
+
 # END WordPress
 
 
