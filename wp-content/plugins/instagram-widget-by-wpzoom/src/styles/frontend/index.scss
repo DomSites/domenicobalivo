@@ -56,6 +56,22 @@
         gap: 20px;
         margin: 0 0 25px;
 
+
+        .wpz-insta-stats {
+            display: flex;
+            gap: 20px;
+            margin: 5px 0;
+
+            .wpz-insta-posts,
+            .wpz-insta-followers,
+            .wpz-insta-following {
+
+                strong {
+                    font-weight: 600;
+                }
+            }
+        }
+
         .zoom-instagram-widget__header-column-left {
             min-width: 70px;
 
@@ -797,6 +813,11 @@ a.ig-b-v-24:hover {
     height: 100%;
 }
 
+.wpzoom-lightbox .mfp-container {
+    backdrop-filter: blur(10px);
+}
+
+
 .wpz-insta-lightbox {
     pointer-events: all;
     display: flex;
@@ -935,7 +956,40 @@ a.ig-b-v-24:hover {
         display: block;
         margin: 0 auto;
         padding: 0;
+
+        &.blurred {
+            // filter: blur(12px);
+        }
     }
+    .wpz-no-reel-link-wrapper {
+
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color:rgba($color: #000, $alpha: 0.2);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        .wpz-no-reel-link {
+            font-size: 14px;
+            padding:10px 20px;
+            color: #262626;
+            background-color: rgba(255,255,255,.7);
+            border-radius: 50px;
+            line-height: 1.4;
+            text-decoration: none;
+            transition: all .2s ease;
+
+            &:hover {
+                background-color: rgba(255,255,255,.9);
+            }
+        }
+    }
+    
+
 }
 
 

@@ -187,6 +187,7 @@ class Wpzoom_Instagram_Widget_Display {
 			if ( $user instanceof WP_Post ) {
 				$show_user_name = isset( $args['show-account-username'] ) && boolval( $args['show-account-username'] );
 				$show_user_badge = $this->is_pro && isset( $args['show-account-badge'] ) && boolval( $args['show-account-badge'] );
+                $show_user_stats = $this->is_pro && isset( $args['show-account-stats'] ) && boolval( $args['show-account-stats'] );
 				$user_name = get_the_title( $user );
 				$user_name = preg_replace( '/[\x{200B}-\x{200D}\x{FEFF}]/u', '', $user_name );
 				$user_name_display = sprintf( '@%s', $user_name );
@@ -198,6 +199,7 @@ class Wpzoom_Instagram_Widget_Display {
 				$show_user_image = isset( $args['show-account-image'] ) && boolval( $args['show-account-image'] );
 				$user_image = get_the_post_thumbnail_url( $user, 'thumbnail' ) ?: plugin_dir_url( __FILE__ ) . 'dist/images/backend/icon-insta.png';
 				$user_account_token = get_post_meta( $user_id, '_wpz-insta_token', true ) ?: '-1';
+				$user_business_page_id = get_post_meta( $user_id, '_wpz-insta_page_id', true ) ?: null;	
 
 				if ( '-1' !== $user_account_token ) {
 					$attrs = '';
@@ -257,6 +259,10 @@ class Wpzoom_Instagram_Widget_Display {
 
 					$this->api->set_access_token( $user_account_token );
 
+					if( ! empty( $user_business_page_id ) ) {
+						$this->api->set_business_page_id( $user_business_page_id );
+					}
+
 					if( isset( $args['feed-id'] ) ) {
 						$this->api->set_feed_id( $args['feed-id'] );
 					}
@@ -306,6 +312,24 @@ class Wpzoom_Instagram_Widget_Display {
 						if ( $show_user_image || $show_user_nname || $show_user_name || $show_user_bio ) {
 							$output .= '<header class="zoom-instagram-widget__header">';
 
+							// Get follower count using Graph API
+							$followers_count = 0;
+							if (!empty($user_business_page_id)) {
+								$followers_count = $this->api->get_followers_count($user_business_page_id, $user_account_token);
+							}
+
+							// Get following count using Graph API
+							$following_count = 0;
+							if (!empty($user_business_page_id)) {
+								$following_count = $this->api->get_following($user_business_page_id, $user_account_token);
+							}
+
+							// Get media count using Graph API
+							$media_count = 0;
+							if (!empty($user_business_page_id)) {
+								$media_count = $this->api->get_media_count($user_business_page_id, $user_account_token);
+							}
+
 							if ( $show_user_image && ! empty( $user_image ) ) {
 								$output .= '<div class="zoom-instagram-widget__header-column-left">';
 								$output .= '<img src="' . esc_url( $user_image ) . '" alt="' . esc_attr( $user_name_display ) . '" width="70"/>';
@@ -316,19 +340,50 @@ class Wpzoom_Instagram_Widget_Display {
 								$output .= '<div class="zoom-instagram-widget__header-column-right">';
 
 								if ( $show_user_nname ) {
-									$output .= '<h5 class="zoom-instagram-widget__header-name">' . esc_html( $user_display_name ) . '</h5>';
+                                    $output .= '<h5 class="zoom-instagram-widget__header-name">' . esc_html( $user_display_name ) . '</h5>';
 								}
 
 								if ( $show_user_name ) {
 									$the_badge = '';
 									if( $show_user_badge ) {
-										$the_badge = '<span class="wpz-insta-badge"><svg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\' xmlns:xlink=\'http://www.w3.org/1999/xlink\'><rect width=\'24\' height=\'24\' stroke=\'none\' fill=\'#000000\' opacity=\'0\'/><g transform="matrix(0.42 0 0 0.42 12 12)" ><g style="" ><g transform="matrix(1 0 0 1 0 0)" ><polygon style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: #0095f6; fill-rule: nonzero; opacity: 1;" points="5.62,-21 9.05,-15.69 15.37,-15.38 15.69,-9.06 21,-5.63 18.12,0 21,5.62 15.69,9.05 15.38,15.37 9.06,15.69 5.63,21 0,18.12 -5.62,21 -9.05,15.69 -15.37,15.38 -15.69,9.06 -21,5.63 -18.12,0 -21,-5.62 -15.69,-9.05 -15.38,-15.37 -9.06,-15.69 -5.63,-21 0,-18.12 " /></g><g transform="matrix(1 0 0 1 -0.01 0.51)" ><polygon style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" points="-2.6,6.74 -9.09,0.25 -6.97,-1.87 -2.56,2.53 7,-6.74 9.09,-4.59 " /></g></g></g></svg></span>';
-									 }
-									$output .= '<p class="zoom-instagram-widget__header-user"><a href="' . esc_url( $user_link ) . '" target="_blank" rel="nofollow">' . esc_html( $user_name_display ) . '</a>' . $the_badge . '</p>';
+                                        $the_badge = '<span class="wpz-insta-badge"><svg width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\' xmlns:xlink=\'http://www.w3.org/1999/xlink\'><rect width=\'24\' height=\'24\' stroke=\'none\' fill=\'#000000\' opacity=\'0\'/><g transform="matrix(0.42 0 0 0.42 12 12)" ><g style="" ><g transform="matrix(1 0 0 1 0 0)" ><polygon style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: #0095f6; fill-rule: nonzero; opacity: 1;" points="5.62,-21 9.05,-15.69 15.37,-15.38 15.69,-9.06 21,-5.63 18.12,0 21,5.62 15.69,9.05 15.38,15.37 9.06,15.69 5.63,21 0,18.12 -5.62,21 -9.05,15.69 -15.37,15.38 -15.69,9.06 -21,5.63 -18.12,0 -21,-5.62 -15.69,-9.05 -15.38,-15.37 -9.06,-15.69 -5.63,-21 0,-18.12 " /></g><g transform="matrix(1 0 0 1 -0.01 0.51)" ><polygon style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-dashoffset: 0; stroke-linejoin: miter; stroke-miterlimit: 4; fill: rgb(255,255,255); fill-rule: nonzero; opacity: 1;" points="-2.6,6.74 -9.09,0.25 -6.97,-1.87 -2.56,2.53 7,-6.74 9.09,-4.59 " /></g></g></g></svg></span>';									}
+                                    $output .= '<p class="zoom-instagram-widget__header-user"><a href="' . esc_url( $user_link ) . '" target="_blank" rel="nofollow">' . esc_html( $user_name_display ) . '</a>' . $the_badge . '</p>';
 								}
 
+
+                                if ( $show_user_stats ) {
+
+    								// Add all three counts in a stats wrapper
+    								if ($followers_count > 0 || $following_count > 0 || $media_count > 0) {
+    									$output .= '<div class="wpz-insta-stats">';
+
+    									if ($media_count > 0) {
+    										$output .= '<div class="wpz-insta-posts">';
+    										$output .= '<strong>' . self::format_number($media_count) . '</strong> ';
+    										$output .= esc_html__('posts', 'instagram-widget-by-wpzoom');
+    										$output .= '</div>';
+    									}
+
+    									if ($followers_count > 0) {
+    										$output .= '<div class="wpz-insta-followers">';
+    										$output .= '<strong>' . self::format_number($followers_count) . '</strong> ';
+    										$output .= esc_html__('followers', 'instagram-widget-by-wpzoom');
+    										$output .= '</div>';
+    									}
+
+    									if ($following_count > 0) {
+    										$output .= '<div class="wpz-insta-following">';
+    										$output .= '<strong>' . self::format_number($following_count) . '</strong> ';
+    										$output .= esc_html__('following', 'instagram-widget-by-wpzoom');
+    										$output .= '</div>';
+    									}
+
+    									$output .= '</div>';
+    								}
+                                }
+
 								if ( $show_user_bio ) {
-									$output .= '<div class="zoom-instagram-widget__header-bio">' . esc_html( $user_bio ) . '</div>';
+                                    $output .= '<div class="zoom-instagram-widget__header-bio">' . esc_html( $user_bio ) . '</div>';
 								}
 
 								$output .= '</div>';
@@ -619,9 +674,19 @@ class Wpzoom_Instagram_Widget_Display {
 
 						$output .= '</div><div class="swiper-pagination"></div><div class="swiper-button-prev"></div><div class="swiper-button-next"></div></div>';
 					} else {
+						
 						if ( $is_video ) {
+
 							$thumb = isset( $item['local-image-url'] ) ? $item['local-image-url'] : '';
-							$output .= '<video controls muted preload="none"><source src="' . esc_url( $src ) . '" type="video/mp4"/></video>';
+
+							if( ! self::is_video_url( $src ) ) {
+								$src = isset( $item['local-image-url'] ) ? $item['local-image-url'] : '';
+								$output .= '<img class="wpzoom-swiper-image swiper-lazy blurred" data-src="' . esc_url( $src_local ) . '" alt="' . esc_attr( $alt ) . '"/>';
+								$output .= '<div class="wpz-no-reel-link-wrapper"><a class="wpz-no-reel-link" target="_blank" href="' . esc_url( $link ) . '"><span class="dashicons dashicons-controls-play"></span>' . esc_html__( 'View Reel on Instagram', 'instagram-widget-by-wpzoom' ) . '</a></div>';
+							} else {
+								$output .= '<video controls muted preload="none"><source src="' . esc_url( $src ) . '" type="video/mp4"/></video>';
+							}
+
 						} else {
 							$output .= '<img class="wpzoom-swiper-image swiper-lazy" data-src="' . esc_url( $src_local ) . '" alt="' . esc_attr( $alt ) . '"/><div class="swiper-lazy-preloader swiper-lazy-preloader-white"></div>';
 						}
@@ -667,6 +732,11 @@ class Wpzoom_Instagram_Widget_Display {
 		return $output;
 	}
 
+	// Check if the URL is a video URL
+	protected static function is_video_url( $url ) {
+		return preg_match( '/(\.mp4|\.mov|video_dash|video_dashinit|\/vs=|\/o1\/v\/t16\/)/i' , $url );
+	}
+
 	/**
 	 * Return errors if widget is misconfigured and current user can manage options (plugin settings).
 	 *
@@ -681,7 +751,7 @@ class Wpzoom_Instagram_Widget_Display {
 				__( 'Instagram Widget misconfigured or your Access Token <strong>expired</strong>. Please check', 'instagram-widget-by-wpzoom' ),
 				admin_url( 'edit.php?post_type=wpz-insta_user' ),
 				__( 'Instagram Settings Page', 'instagram-widget-by-wpzoom' ),
-				__( 'and re-connect your account.', 'instagram-widget-by-wpzoom' )
+				__( 'and reconnect your account.', 'instagram-widget-by-wpzoom' )
 			);
 
 			if ( ! empty( $errors ) ) {

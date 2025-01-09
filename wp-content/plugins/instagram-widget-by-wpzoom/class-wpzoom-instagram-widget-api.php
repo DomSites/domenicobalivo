@@ -48,6 +48,13 @@ class Wpzoom_Instagram_Widget_API {
 	protected $feed_id;
 
 	/**
+	 * Business Page ID
+	 *
+	 * @var string
+	 */
+	protected $business_page_id;
+
+	/**
 	 * Class constructor
 	 */
 	protected function __construct() {
@@ -67,6 +74,8 @@ class Wpzoom_Instagram_Widget_API {
 		add_action( 'init', array( $this, 'set_schedule' ) );
 		add_action( 'wpzoom_instagram_widget_cron_hook', array( $this, 'execute_cron' ) );
 		add_filter( 'cron_schedules', array( $this, 'add_cron_interval' ) );
+
+		$this->maybe_show_api_deprecation_notice();
 	}
 
 	/**
@@ -105,6 +114,18 @@ class Wpzoom_Instagram_Widget_API {
 	 */
 	public function set_feed_id( $id ) {
 		$this->feed_id = $id;
+	}
+
+	/**
+	 * Manually set the bussines page id.
+	 *
+	 * @since 2.0.0
+	 *
+	 * @param string $id The page id to set.
+	 * @return void
+	 */
+	public function set_business_page_id( $id ) {
+		$this->business_page_id = $id;
 	}
 
 	/**
@@ -171,8 +192,11 @@ class Wpzoom_Instagram_Widget_API {
 					$user_name    = get_the_title( $user );
 					$user_display = sprintf( '@%s', $user_name );
 					$token        = get_post_meta( $user->ID, '_wpz-insta_token', true );
+					$connection_type   = get_post_meta( $user->ID, '_wpz-insta_connection-type', true );
+
 
 					if ( false !== $token && ! empty( $token ) ) {
+
 						$request_url = add_query_arg(
 							array(
 								'grant_type'   => 'ig_refresh_token',
@@ -180,6 +204,15 @@ class Wpzoom_Instagram_Widget_API {
 							),
 							'https://graph.instagram.com/refresh_access_token'
 						);
+
+						if( 'facebook_graph_api' == $connection_type ) {
+							$request_url = add_query_arg(
+								array(
+									'access_token' => $token,
+								),
+								'https://www.wpzoom.com/graph-auth'
+							);
+						}
 
 						$response      = self::remote_get( $request_url, $this->headers );
 						$response_code = wp_remote_retrieve_response_code( $response );
@@ -278,8 +311,8 @@ class Wpzoom_Instagram_Widget_API {
 			$transient = 'zoom_instagram_is_configured';
 		}
 
-		if ( ! empty( $this->access_token ) ) {
-			$transient = $transient . '_' . substr( $this->access_token, 0, 20 );
+		if ( ! empty( $this->access_token ) && ! empty( $this->feed_id ) ) {
+			$transient = $transient . '_' . substr( $this->feed_id, 0, 20 );
 		}
 
 		$injected_username = trim( $injected_username );
@@ -292,6 +325,7 @@ class Wpzoom_Instagram_Widget_API {
 		}
 
 		if ( ! empty( $this->access_token ) ) {
+
 			$request_url = add_query_arg(
 				array(
 					'fields'       => 'media_url,media_type,caption,username,permalink,thumbnail_url,timestamp,children{media_url,media_type,thumbnail_url}',
@@ -300,6 +334,17 @@ class Wpzoom_Instagram_Widget_API {
 				),
 				'https://graph.instagram.com/me/media'
 			);
+
+			if( ! empty( $this->business_page_id ) ) {
+				$request_url = add_query_arg(
+					array(
+						'fields'       => 'media_url,media_product_type,thumbnail_url,caption,id,media_type,timestamp,username,permalink,children%7Bmedia_url,id,media_type,timestamp,permalink,thumbnail_url%7D',
+						'access_token' => $this->access_token,
+						'limit'        => $image_limit,
+					),
+					'https://graph.facebook.com/v21.0/' . $this->business_page_id . '/media'
+				);
+			}
 
 			$response = self::remote_get( $request_url, $this->headers );
 
@@ -325,12 +370,12 @@ class Wpzoom_Instagram_Widget_API {
 
 		if ( ! empty( $data->data ) ) {
 			if ( ! $bypass_transient ) {
-				set_transient( 
+				set_transient(
 					$transient,
 					wp_json_encode( $data ),
 					$this->get_transient_lifetime( $this->feed_id )
 				);
-				
+
 			}
 		} else {
 			if ( ! $bypass_transient ) {
@@ -527,7 +572,7 @@ class Wpzoom_Instagram_Widget_API {
 
 			$converted->data[] = (object) array(
 				'id'           => $item->id,
-				'media_url'    => ( $is_video ? $item->media_url : $media_url ),
+				'media_url'    => ( $is_video && property_exists( $item, 'media_url' ) ? $item->media_url : $media_url ),
 				'user'         => (object) array(
 					'id'              => null,
 					'fullname'        => null,
@@ -610,6 +655,16 @@ class Wpzoom_Instagram_Widget_API {
 				'https://graph.instagram.com/me'
 			);
 
+			if( ! empty( $this->business_page_id ) ) {
+				$request_url = add_query_arg(
+					array(
+						'fields'       => 'name,username,profile_picture_url,biography',
+						'access_token' => $this->access_token,
+					),
+					'https://graph.facebook.com/' . $this->business_page_id
+				);
+			}
+
 			$response = self::remote_get( $request_url, $this->headers );
 
 			if ( is_wp_error( $response ) || 200 != wp_remote_retrieve_response_code( $response ) ) {
@@ -639,6 +694,76 @@ class Wpzoom_Instagram_Widget_API {
 		return $data;
 	}
 
+	// Get Instagram Business Pages
+	public static function get_business_accounts_from_token( $access_token ) {
+
+		$accountsData = array(
+			'accounts' => array(),
+			'error'    => false,
+		);
+
+		if ( ! empty( $access_token ) ) {
+
+			// Get Instagram Business Account ID
+			$request_url = add_query_arg(
+				array(
+					'fields'       => 'instagram_business_account,access_token',
+					'limit'        => 500,
+					'access_token' => $access_token,
+					'timeout'      => 60,
+				),
+				'https://graph.facebook.com/me/accounts'
+			);
+
+			$response =  wp_remote_get( $request_url );
+
+			if ( ! is_wp_error( $response ) && 200 == wp_remote_retrieve_response_code( $response ) ) {
+				$pages_arr = json_decode( wp_remote_retrieve_body( $response ) );
+			}
+			else {
+				$page_error = json_decode( wp_remote_retrieve_body( $response ) );
+			}
+
+			if ( isset( $page_error ) && isset( $page_error->error ) ) {
+				$error_message = '';
+				if( isset( $page_error->error->message )  ) {
+					$error_message .= $page_error->error->message;
+				}
+
+				return $error_message;
+			}
+
+			if ( ! empty( $pages_arr ) && is_object( $pages_arr ) && ! empty( $pages_arr->data ) ) {
+				foreach ( $pages_arr->data as $key => $page ) {
+					if( isset( $page->instagram_business_account ) ) {
+						$instagram_business_account_id  = $page->instagram_business_account->id;
+						//$instagram_business_account_token = $page->token;
+						$request_account_url = add_query_arg(
+							array(
+								'fields'       => 'name,username,profile_picture_url,biography',
+								'access_token' => $access_token,
+							),
+							'https://graph.facebook.com/' . $instagram_business_account_id
+						);
+
+						$response_account = wp_remote_get( $request_account_url );
+
+						if ( ! is_wp_error( $response_account ) && 200 == wp_remote_retrieve_response_code( $response_account ) ) {
+							$account_data = json_decode( wp_remote_retrieve_body( $response_account ) );
+							$accountsData['accounts'][] = $account_data;
+						}
+
+					}
+				}
+
+			}
+
+		}
+
+		return $accountsData;
+
+	}
+
 	public static function get_basic_user_info_from_token( $access_token ) {
 		$output = false;
 
@@ -646,7 +771,7 @@ class Wpzoom_Instagram_Widget_API {
 			$request_url = add_query_arg(
 				array(
 					'access_token' => $access_token,
-					'fields'       => 'account_type,username',
+					'fields'       => 'name,account_type,username,biography,profile_picture_url',
 				),
 				'https://graph.instagram.com/me'
 			);
@@ -757,6 +882,228 @@ class Wpzoom_Instagram_Widget_API {
 		}
 
 		return true;
+	}
+
+	// Add this new method to get and cache followers count
+	public function get_followers_count($user_business_page_id, $user_account_token) {
+		if (empty($user_business_page_id) || empty($user_account_token)) {
+			return 0;
+		}
+
+		// Create a unique transient key for this account
+		$transient_key = 'wpz-insta_followers_' . $user_business_page_id;
+
+		// Try to get cached followers count
+		$followers_count = get_transient($transient_key);
+
+		if (false === $followers_count) {
+			// If no cached data, fetch from API
+			$graph_api_url = add_query_arg(
+				array(
+					'fields'       => 'followers_count',
+					'access_token' => $user_account_token,
+				),
+				'https://graph.facebook.com/v21.0/' . $user_business_page_id
+			);
+
+			$response = wp_remote_get($graph_api_url);
+
+			if (!is_wp_error($response) && 200 === wp_remote_retrieve_response_code($response)) {
+				$data = json_decode(wp_remote_retrieve_body($response));
+				if (isset($data->followers_count)) {
+					$followers_count = intval($data->followers_count);
+					// Cache for 24 hours
+					set_transient($transient_key, $followers_count, DAY_IN_SECONDS);
+				} else {
+					$followers_count = 0;
+				}
+			} else {
+				$followers_count = 0;
+			}
+		}
+
+		return $followers_count;
+	}
+
+
+    // Add this new method to get and cache following count
+    public function get_following($user_business_page_id, $user_account_token) {
+        if (empty($user_business_page_id) || empty($user_account_token)) {
+            return 0;
+        }
+
+        // Create a unique transient key for this account
+        $transient_key = 'wpz-insta_following_' . $user_business_page_id;
+
+        // Try to get cached following count
+        $following_count = get_transient($transient_key);
+
+        if (false === $following_count) {
+            // If no cached data, fetch from API
+            $graph_api_url = add_query_arg(
+                array(
+                    'fields'       => 'follows_count',
+                    'access_token' => $user_account_token,
+                ),
+                'https://graph.facebook.com/v21.0/' . $user_business_page_id
+            );
+
+            $response = wp_remote_get($graph_api_url);
+
+            if (!is_wp_error($response) && 200 === wp_remote_retrieve_response_code($response)) {
+                $data = json_decode(wp_remote_retrieve_body($response));
+                if (isset($data->follows_count)) {
+                    $following_count = intval($data->follows_count);
+                    // Cache for 24 hours
+                    set_transient($transient_key, $following_count, DAY_IN_SECONDS);
+                } else {
+                    $following_count = 0;
+                }
+            } else {
+                $following_count = 0;
+            }
+        }
+
+        return $following_count;
+    }
+
+    // Add this new method to get and cache media count
+    public function get_media_count($user_business_page_id, $user_account_token) {
+        if (empty($user_business_page_id) || empty($user_account_token)) {
+            return 0;
+        }
+
+        // Create a unique transient key for this account
+        $transient_key = 'wpz-insta_media_count_' . $user_business_page_id;
+
+        // Try to get cached media count
+        $media_count = get_transient($transient_key);
+
+        if (false === $media_count) {
+            // If no cached data, fetch from API
+            $graph_api_url = add_query_arg(
+                array(
+                    'fields'       => 'media_count',
+                    'access_token' => $user_account_token,
+                ),
+                'https://graph.facebook.com/v21.0/' . $user_business_page_id
+            );
+
+            $response = wp_remote_get($graph_api_url);
+
+            if (!is_wp_error($response) && 200 === wp_remote_retrieve_response_code($response)) {
+                $data = json_decode(wp_remote_retrieve_body($response));
+                if (isset($data->media_count)) {
+                    $media_count = intval($data->media_count);
+                    // Cache for 24 hours
+                    set_transient($transient_key, $media_count, DAY_IN_SECONDS);
+                } else {
+                    $media_count = 0;
+                }
+            } else {
+                $media_count = 0;
+            }
+        }
+
+        return $media_count;
+    }
+
+	// Add this new method to check if using Basic Display API
+	public static function is_using_basic_display_api( $user_id ) {
+		
+		if ( empty ( $user_id ) ) 
+			return false;
+
+		$connection_type = get_post_meta( $user_id, '_wpz-insta_connection-type', true );
+
+		if ( empty( $connection_type ) || 'facebook_graph_api' !== $connection_type && 'business_instagram_login_api' !== $connection_type ) {
+			return true;
+		}
+
+	}
+
+	// Add this method to show the admin notice
+	public function maybe_show_api_deprecation_notice() {
+		// Only show on admin pages
+		
+		if ( ! is_admin() ) 
+			return;
+
+		// Get all Instagram users
+		$users = get_posts(array(
+			'post_type' => 'wpz-insta_user',
+			'posts_per_page' => -1,
+		));
+
+		$has_basic_api_users = false;
+		foreach ($users as $user) {
+			if ( self::is_using_basic_display_api( $user->ID ) ) {
+				$has_basic_api_users = true;
+				break;
+			}
+		}
+
+		// If we found any users using Basic Display API, show the notice
+		if ($has_basic_api_users) {
+			add_action('admin_notices', function() {
+				$notice_dismissed = get_option('wpz_insta_basic_api_notice_dismissed');
+				if ($notice_dismissed) return;
+
+				?>
+				<div class="notice notice-warning is-dismissible" id="wpz-insta-api-deprecation-notice">
+					<h3 style="margin-bottom: 0;">
+						<svg style="vertical-align: middle;" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+							<path fill="#f0b849" d="M12 5.99L19.53 19H4.47L12 5.99M12 2L1 21h22L12 2zm1 14h-2v2h2v-2zm0-6h-2v4h2v-4z"/>
+						</svg>
+						<?php _e('Major Instagram API Update', 'instagram-widget-by-wpzoom'); ?>
+					</h3>
+
+					<p style="font-size: 14px;">
+						<?php _e("We've detected that you connected your Instagram account using a method that will soon be discontinued or that you're using a <strong>personal account</strong> to display your Instagram feed. Instagram will discontinue this method on <strong>December 4, 2024</strong>, and will no longer allow the use of personal accounts within our plugin.", 'instagram-widget-by-wpzoom'); ?>
+					</p>
+
+					<p style="font-size: 14px;">
+                        <?php
+                        printf(
+                            __('To continue displaying your Instagram feed, you\'ll need to: <br>1. Convert your Personal Instagram account to a <a href="%1$s" target="_blank">Professional account</a> (Creator or Business).<br>2. Go to the <a href="%2$s">Instagram Accounts</a> page<br/>3. Click on the Instagram account you want to reconnect and reconnect using the new Facebook or Instagram methods.', 'instagram-widget-by-wpzoom'),
+                            'https://help.instagram.com/502981923235522',
+                            admin_url('edit.php?post_type=wpz-insta_user')
+                        );
+                        ?>
+                    </p>
+
+					<p style="font-size: 14px;">
+						<a href="<?php echo admin_url('edit.php?post_type=wpz-insta_user'); ?>" class="button button-primary">
+							<?php _e('Go to Instagram Accounts', 'instagram-widget-by-wpzoom'); ?>
+						</a>
+
+						<a href="https://www.wpzoom.com/documentation/instagram-widget/basic-display-api-deprecation/" target="_blank" class="button button-secondary">
+							<?php _e('Learn More About This Change', 'instagram-widget-by-wpzoom'); ?>
+						</a>
+					</p>
+				</div>
+
+				<script>
+				jQuery(document).ready(function($) {
+					$(document).on('click', '#wpz-insta-api-deprecation-notice .notice-dismiss', function() {
+						$.ajax({
+							url: ajaxurl,
+							data: {
+								action: 'dismiss_wpz_insta_basic_api_notice'
+							}
+						});
+					});
+				});
+				</script>
+				<?php
+			});
+
+			// Add AJAX handler for dismissing the notice
+			add_action('wp_ajax_dismiss_wpz_insta_basic_api_notice', function() {
+				update_option('wpz_insta_basic_api_notice_dismissed', true);
+				wp_die();
+			});
+		}
 	}
 }
 
